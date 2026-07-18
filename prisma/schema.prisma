@@ -1,0 +1,890 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  passwordHash        String
+  name                String
+  role                Role
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Detailed Patient fields
+  firstName           String?
+  lastName            String?
+  middleName          String?
+  gender              String?
+  dob                 String?
+  phone               String?
+  address             String?
+  city                String?
+  state               String?
+  country             String?
+  emergencyContactName String?
+  emergencyContactPhone String?
+  bloodGroup          String?  // e.g. "O+", "A+", etc.
+  genotype            String?  // e.g. "AA", "AS", "SS"
+  maritalStatus       String?
+  occupation          String?
+  nationality         String?
+  idNumber            String?
+  passportPhoto       String?
+  patientId           String?  @unique // Custom ID like PAT-001
+  mrn                 String?  @unique // Medical Record Number
+  medicalHistoryNotes String?
+
+  // Staff/Doctor details (nullable, active if role == "Doctor")
+  department          String?  // e.g. "Cardiology", "Neurology", etc.
+  specialization      String?
+  workSchedule        String?
+  supervisorId        String?
+  permissions         String?
+  licenseNumber       String?
+  qualification       String?
+  employmentDate      String?
+  position            String?
+  isArchived          Boolean  @default(false)
+
+  // Relations
+  patientAppointments Appointment[]    @relation("PatientAppointments")
+  doctorAppointments  Appointment[]    @relation("DoctorAppointments")
+  vitalsLogs          VitalsLog[]      @relation("PatientVitals")
+  conditions          Condition[]      @relation("PatientConditions")
+  diagnoses           Diagnosis[]      @relation("PatientDiagnoses")
+  allergies           Allergy[]        @relation("PatientAllergies")
+  patientPrescriptions Prescription[]  @relation("PatientPrescriptions")
+  doctorPrescriptions  Prescription[]  @relation("DoctorPrescriptions")
+  labReports          LabReport[]      @relation("PatientLabs")
+  radiologyReports    RadiologyReport[] @relation("PatientRadiology")
+  consultations       Consultation[]   @relation("DoctorConsultations")
+  patientConsultations Consultation[]  @relation("PatientConsultations")
+  notifications       Notification[]   @relation("UserNotifications")
+  admissions          Admission[]      @relation("PatientAdmissions")
+  nursingAssessments  NursingAssessment[] @relation("PatientNursingAssessments")
+  medicationLogs      MedicationAdministration[] @relation("PatientMedicationLogs")
+  intakeOutputs       IntakeOutput[]   @relation("PatientIntakeOutput")
+  patientEducations   PatientEducation[] @relation("PatientEducation")
+  nursingNotes        NursingNote[]    @relation("PatientNursingNotes")
+  patientLabRequests  LabRequest[]     @relation("PatientLabRequests")
+  doctorLabRequests   LabRequest[]     @relation("DoctorLabRequests")
+  techLabRequests     LabRequest[]     @relation("TechnicianLabRequests")
+  queueItems          QueueItem[]      @relation("PatientQueue")
+
+  // Pharmacy relations
+  dispensingRecords   DispensingRecord[] @relation("PharmacistDispensing")
+  stockMovements      StockMovement[]    @relation("PharmacistStockMovements")
+  purchaseOrders      PurchaseOrder[]    @relation("PharmacistPurchaseOrders")
+  pharmacyAIInteractions PharmacyAIInteraction[] @relation("PharmacistAIInteractions")
+
+  // Messaging relations
+  sentMessages      SecureMessage[]    @relation("SentMessages")
+  receivedMessages  SecureMessage[]    @relation("ReceivedMessages")
+  patientFeedbacks  PatientFeedback[]  @relation("PatientFeedbacks")
+  medicationReminders MedicationReminder[] @relation("PatientReminders")
+  genericAIFeedbacks GenericAIFeedback[]
+}
+
+model Appointment {
+  id              String   @id @default(uuid())
+  patientId       String
+  receptionistId  String?
+  doctorId        String?
+  dateTime        String   // ISO date string
+  reason          String
+  status          String   // "Pending" | "Confirmed" | "Checked-In" | "In Progress" | "Completed" | "Cancelled" | "No Show"
+  type            String?  // "Consultation" | "Follow-up" | "Emergency"
+  department      String?
+  notes           String?
+  rejectionReason String?
+  queueNumber     Int?
+  waitingRoom     String?
+  arrivalTime     DateTime?
+  departureTime   DateTime?
+  checkInTime     DateTime?
+  completionTime  DateTime?
+  consultationRoom String?
+  priority        String?  // "Normal" | "Urgent" | "Emergency"
+  createdBy       String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  patient     User     @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User?    @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
+  consultation Consultation?
+}
+
+model Consultation {
+  id                  String   @id @default(uuid())
+  appointmentId       String?  @unique
+  patientId           String
+  doctorId            String
+  startTime           DateTime @default(now())
+  endTime             DateTime?
+  duration            Int?     // in minutes
+  department          String
+  chiefComplaint      String?
+  symptoms            String?
+  physicalExamination String?
+  provisionalDiagnosis String?
+  finalDiagnosis      String?
+  treatmentPlan       String?
+  followUpInstructions String?
+  notes               String?
+  status              String   @default("In Progress") // "In Progress" | "Completed"
+
+  patient             User     @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor              User     @relation("DoctorConsultations", fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment         Appointment? @relation(fields: [appointmentId], references: [id])
+  aiRecommendations   AIRecommendation[]
+}
+
+model AIRecommendation {
+  id              String   @id @default(uuid())
+  consultationId  String
+  type            String   // "Diagnosis" | "Treatment" | "Medication" | "Lab" | "Radiology" | "Lifestyle"
+  recommendation  String
+  confidenceScore Float
+  explanation     String?
+  clinicalReasoning String?
+  supportingRationale String?
+  possibleRisks   String?
+  alternatives    String?
+  status          String   @default("Pending") // "Pending" | "Accepted" | "Rejected" | "Partially Accepted"
+  createdAt       DateTime @default(now())
+
+  consultation    Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  feedback        RLFeedback?
+}
+
+model RLFeedback {
+  id                  String   @id @default(uuid())
+  recommendationId    String   @unique
+  rating              Int      // 1-5 stars
+  feedbackText        String?
+  rejectionReason     String?
+  doctorAction        String   // "Accept" | "Reject" | "Partial"
+  timestamp           DateTime @default(now())
+
+  recommendation      AIRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+}
+
+model GenericAIFeedback {
+  id            String   @id @default(uuid())
+  userId        String
+  userRole      String
+  feature       String   // "SymptomTriage", "LabInterpretation", "PharmacyAssistant", etc.
+  query         String   @db.Text
+  response      String   @db.Text
+  rating        Int      // 1 for helpful, -1 for not helpful, or 1-5
+  comment       String?  @db.Text
+  timestamp     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MedicationReminder {
+  id              String   @id @default(uuid())
+  patientId       String
+  prescriptionId  String?
+  medicineName    String
+  dosage          String
+  time            String   // e.g. "08:00"
+  frequency       String   // "Daily", "Weekly", etc.
+  isActive        Boolean  @default(true)
+  lastTaken       DateTime?
+  createdAt       DateTime @default(now())
+  
+  adherenceLogs   AdherenceLog[]
+  patient         User     @relation("PatientReminders", fields: [patientId], references: [id])
+}
+
+model AdherenceLog {
+  id              String   @id @default(uuid())
+  reminderId      String
+  status          String   // "Taken" | "Missed"
+  timestamp       DateTime @default(now())
+
+  reminder        MedicationReminder @relation(fields: [reminderId], references: [id])
+}
+
+model Diagnosis {
+  id              String   @id @default(uuid())
+  patientId       String
+  doctorId        String
+  primaryDiagnosis String
+  secondaryDiagnosis String?
+  icdCode         String?
+  severity        String   // "Mild" | "Moderate" | "Severe" | "Critical"
+  clinicalNotes   String?
+  status          String   // "Active" | "Resolved" | "Chronic"
+  diagnosisDate   DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         User     @relation("PatientDiagnoses", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model VitalsLog {
+  id              String   @id @default(uuid())
+  patientId       String
+  bloodPressure   String?  // e.g. "120/80"
+  heartRate       Int?     // bpm
+  temperature     Float?   // °C
+  respiratoryRate Int?     // breaths per min
+  oxygenSaturation Int?    // % SpO2
+  bloodSugar      Float?   // mg/dL
+  height          Float?   // cm
+  weight          Float?   // kg
+  bmi             Float?
+  recordedBy      String   // Name of doctor/nurse
+  recordedAt      DateTime @default(now())
+
+  patient         User     @relation("PatientVitals", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Condition {
+  id          String   @id @default(uuid())
+  patientId   String
+  name        String   // e.g. "Hypertension"
+  notes       String?
+  diagnosedBy String   // Doctor's name
+  diagnosedAt DateTime @default(now())
+
+  patient     User     @relation("PatientConditions", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Allergy {
+  id          String   @id @default(uuid())
+  patientId   String
+  allergen    String   // e.g. "Penicillin"
+  severity    String   // "Mild" | "Moderate" | "Severe"
+  notedBy     String   // Doctor's name
+  notedAt     DateTime @default(now())
+
+  patient     User     @relation("PatientAllergies", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Prescription {
+  id                     String             @id @default(uuid())
+  patientId              String
+  doctorId               String
+  status                 String             // "Pending" | "Verified" | "Ready for Dispensing" | "Partially Dispensed" | "Dispensed" | "On Hold" | "Cancelled" | "Expired"
+  aiInteractionWarnings  String?            // Evaluation generated by Gemini
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  patient                User               @relation("PatientPrescriptions", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor                 User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id], onDelete: Cascade)
+  items                  PrescriptionItem[]
+  dispensingRecords      DispensingRecord[]
+  pharmacyAIInteractions PharmacyAIInteraction[]
+}
+
+model PrescriptionItem {
+  id             String       @id @default(uuid())
+  prescriptionId String
+  medicineName   String
+  dosage         String       // e.g. "500mg"
+  frequency      String       // e.g. "Twice daily"
+  duration       String       // e.g. "7 days"
+  instructions   String?
+  drugType       String?
+
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicationLogs MedicationAdministration[]
+}
+
+model Admission {
+  id                String   @id @default(uuid())
+  patientId         String
+  admittedById      String
+  ward              String
+  bedNumber         String
+  admissionTime     DateTime @default(now())
+  dischargeTime     DateTime?
+  status            String   @default("Admitted") // "Admitted" | "Transferred" | "Discharged"
+  observations      String?
+  wardTransferHistory String? // JSON string
+
+  patient           User     @relation("PatientAdmissions", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model NursingAssessment {
+  id                  String   @id @default(uuid())
+  patientId           String
+  nurseId             String
+  chiefComplaint      String?
+  mentalStatus        String?
+  painLevel           Int?     // 1-10
+  skinAssessment      String?
+  mobilityAssessment  String?
+  nutritionalStatus   String?
+  hydrationStatus     String?
+  fallRisk            String?
+  infectionRisk       String?
+  pressureUlcerRisk   String?
+  observations        String?
+  createdAt           DateTime @default(now())
+
+  patient             User     @relation("PatientNursingAssessments", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model MedicationAdministration {
+  id                String   @id @default(uuid())
+  patientId         String
+  prescriptionItemId String
+  nurseId           String
+  administeredAt    DateTime @default(now())
+  dosageGiven       String
+  route             String
+  status            String   @default("Given") // "Given" | "Missed" | "Delayed"
+  adverseReactions  String?
+  notes             String?
+
+  patient           User     @relation("PatientMedicationLogs", fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptionItem  PrescriptionItem @relation(fields: [prescriptionItemId], references: [id])
+}
+
+model IntakeOutput {
+  id              String   @id @default(uuid())
+  patientId       String
+  nurseId         String
+  type            String   // "Intake" | "Output"
+  category        String   // "Oral Fluid" | "IV Fluid" | "Urine" | "Stool" | "Vomitus" | "Drain"
+  amount          Float    // ml
+  timestamp       DateTime @default(now())
+
+  patient         User     @relation("PatientIntakeOutput", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model NursingNote {
+  id        String   @id @default(uuid())
+  patientId String
+  nurseId   String
+  shiftId   String?
+  note      String
+  type      String   @default("Progress") // "Progress" | "Shift Change" | "Observation"
+  createdAt DateTime @default(now())
+
+  patient   User     @relation("PatientNursingNotes", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model ShiftReport {
+  id            String   @id @default(uuid())
+  nurseId       String
+  ward          String
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  reportContent String?
+  handoverToId  String?
+  status        String   @default("Active") // "Active" | "Completed"
+}
+
+model PatientEducation {
+  id        String   @id @default(uuid())
+  patientId String
+  nurseId   String
+  topic     String
+  notes     String?
+  date      DateTime @default(now())
+
+  patient   User     @relation("PatientEducation", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model LabReport {
+  id               String           @id @default(uuid())
+  patientId        String
+  testName         String           // e.g. "Blood Pathology Panel Analysis"
+  orderedBy        String           // Doctor's name
+  status           String           // "Pending" | "Completed"
+  notes            String?          // General pathology notes
+  aiInterpretation String?          // Evaluation generated by Gemini
+  createdAt        DateTime         @default(now())
+
+  patient          User             @relation("PatientLabs", fields: [patientId], references: [id], onDelete: Cascade)
+  results          LabResultItem[]
+}
+
+model RadiologyReport {
+  id               String           @id @default(uuid())
+  patientId        String
+  studyType        String           // "X-Ray" | "CT Scan" | "MRI" | "Ultrasound" | "ECG"
+  orderedBy        String           // Doctor's name
+  status           String           // "Pending" | "Completed"
+  findings         String?
+  impression       String?
+  imageUrls        String?          // Comma-separated or JSON
+  aiInterpretation String?
+  createdAt        DateTime         @default(now())
+
+  patient          User             @relation("PatientRadiology", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // "Appointment" | "Lab" | "Radiology" | "Emergency" | "AI"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LabResultItem {
+  id             String    @id @default(uuid())
+  labReportId    String
+  parameter      String    // e.g. "Glucose"
+  value          String    // e.g. "140"
+  unit           String    // e.g. "mg/dL"
+  referenceRange String    // e.g. "< 100"
+  isAbnormal     Boolean
+
+  labReport      LabReport @relation(fields: [labReportId], references: [id], onDelete: Cascade)
+}
+
+model MedicineInventory {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  category       String   // e.g. "Analgesic", "Antibiotic", etc.
+  stock          Int
+  unit           String   // e.g. "tablets", "vials"
+  minStockLevel  Int
+  price          Float
+}
+
+model QueueItem {
+  id           String   @id @default(uuid())
+  patientId    String
+  patientName  String
+  doctorId     String?
+  doctorName   String?
+  department   String
+  type         String   @default("Consultation") // "Consultation" | "Laboratory" | "Pharmacy" | "Nursing"
+  tokenNumber  Int
+  status       String   @default("Waiting") // "Waiting" | "Calling" | "With Doctor" | "Absent" | "Skipped" | "Completed" | "Discharged"
+  priority     String   @default("Normal")  // "Normal" | "Urgent" | "Emergency"
+  checkedInAt  DateTime @default(now())
+  calledAt     DateTime?
+  startedAt    DateTime?
+  notes        String?
+
+  patient      User     @relation("PatientQueue", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  timestamp DateTime @default(now())
+  userId    String
+  userName  String
+  role      String
+  action    String
+  details   String
+  severity  String   // "Low" | "Medium" | "High"
+  ipAddress String?
+  device    String?
+}
+
+model SecureMessage {
+  id              String   @id @default(uuid())
+  senderId        String
+  receiverId      String
+  subject         String?
+  content         String
+  attachments     String?  // JSON array of URLs
+  isRead          Boolean  @default(false)
+  isEmergency     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  sender          User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver        User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+model PatientFeedback {
+  id              String   @id @default(uuid())
+  patientId       String
+  category        String   // "Doctor" | "Nurse" | "Lab" | "Pharmacy" | "General"
+  targetId        String?  // ID of the doctor/nurse/etc. being rated
+  rating          Int      // 1-5
+  comment         String?
+  createdAt       DateTime @default(now())
+
+  patient         User     @relation("PatientFeedbacks", fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model EducationalResource {
+  id              String   @id @default(uuid())
+  title           String
+  content         String   // Markdown or HTML
+  category        String   // "Nutrition" | "Exercise" | "Mental Health" | "Chronic Disease" | etc.
+  type            String   // "Article" | "Video" | "Guide"
+  mediaUrl        String?
+  tags            String?  // Comma-separated
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+  LABORATORY
+  PHARMACIST
+  PATIENT
+}
+
+enum LabRequestStatus {
+  PENDING
+  ACCEPTED
+  SAMPLE_AWAITING_COLLECTION
+  SAMPLE_COLLECTED
+  SAMPLE_RECEIVED
+  UNDER_ANALYSIS
+  AWAITING_VERIFICATION
+  COMPLETED
+  RELEASED
+  REJECTED
+  CANCELLED
+}
+
+enum LabPriority {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum SampleType {
+  BLOOD
+  URINE
+  STOOL
+  SALIVA
+  SPUTUM
+  TISSUE
+  SWAB
+  PLASMA
+  SERUM
+  CSF
+  OTHER
+}
+
+enum EquipmentStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  FAULTY
+  RETIRED
+}
+
+model LabRequest {
+  id              String           @id @default(uuid())
+  patientId       String
+  doctorId        String
+  technicianId    String?
+  testName        String
+  department      String
+  priority        LabPriority      @default(ROUTINE)
+  status          LabRequestStatus @default(PENDING)
+  rejectionReason String?
+  observations    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  patient     User             @relation("PatientLabRequests", fields: [patientId], references: [id])
+  doctor      User             @relation("DoctorLabRequests", fields: [doctorId], references: [id])
+  technician  User?            @relation("TechnicianLabRequests", fields: [technicianId], references: [id])
+  samples     Sample[]
+  results     LabResult[]
+  aiInteractions LabAIInteraction[]
+}
+
+model Sample {
+  id                String      @id @default(uuid())
+  labRequestId      String
+  sampleId          String      @unique // Generated Barcode/QR
+  type              SampleType
+  collectionDate    DateTime
+  collectionLocation String
+  collector         String
+  storageConditions String
+  quantity          String
+  condition         String
+  receivedAt        DateTime?
+  status            String      @default("COLLECTED")
+  createdAt         DateTime    @default(now())
+
+  labRequest        LabRequest  @relation(fields: [labRequestId], references: [id])
+}
+
+model LabResult {
+  id                String      @id @default(uuid())
+  labRequestId      String
+  testName          String
+  resultValue       String
+  unit              String
+  referenceRange    String
+  interpretation    String?
+  technicianNotes   String?
+  isAbnormal        Boolean     @default(false)
+  abnormalityLevel  String?     // LOW, NORMAL, HIGH, CRITICAL
+  verificationStatus String     @default("PENDING") // PENDING, APPROVED, CORRECTION_REQUESTED
+  verifiedById      String?
+  verifiedAt        DateTime?
+  createdAt         DateTime    @default(now())
+
+  labRequest        LabRequest  @relation(fields: [labRequestId], references: [id])
+}
+
+model LabEquipment {
+  id                String          @id @default(uuid())
+  name              String
+  model             String
+  manufacturer      String
+  serialNumber      String          @unique
+  maintenanceSchedule String
+  lastCalibrationDate DateTime
+  nextCalibrationDate DateTime
+  status            EquipmentStatus @default(ACTIVE)
+  createdAt         DateTime        @default(now())
+
+  qualityControls   LabQualityControl[]
+}
+
+model LabQualityControl {
+  id              String        @id @default(uuid())
+  equipmentId     String
+  testDate        DateTime      @default(now())
+  status          String        // PASSED, FAILED
+  observations    String?
+  technicianId    String
+  createdAt       DateTime      @default(now())
+
+  equipment       LabEquipment  @relation(fields: [equipmentId], references: [id])
+}
+
+model LabAIInteraction {
+  id                String      @id @default(uuid())
+  labRequestId      String
+  query             String
+  response          String
+  confidenceScore   Float
+  rationale         String
+  alternatives      String?
+  feedbackStatus    String?     // ACCEPTED, REJECTED
+  feedbackRating    Int?        // 1-5
+  feedbackComments  String?
+  feedbackCorrection String?
+  createdAt         DateTime    @default(now())
+
+  labRequest        LabRequest  @relation(fields: [labRequestId], references: [id])
+}
+
+// Pharmacy Management System Models
+
+model Medicine {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  genericName         String
+  brandName           String?
+  category            String   // e.g. "Analgesic", "Antibiotic"
+  manufacturer        String?
+  supplierId          String?
+  batchNumber         String?
+  barcode             String?  @unique
+  qrCode              String?  @unique
+  strength            String?  // e.g. "500mg"
+  dosageForm          String?  // e.g. "Tablet", "Syrup"
+  unit                String   // e.g. "Bottle", "Box"
+  purchasePrice       Float
+  sellingPrice        Float
+  quantityInStock     Int      @default(0)
+  reorderLevel        Int      @default(10)
+  expiryDate          DateTime?
+  storageInstructions String?
+  status              MedicineStatus @default(AVAILABLE)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  supplier            Supplier? @relation(fields: [supplierId], references: [id])
+  stockMovements      StockMovement[]
+  dispensingRecords   DispensingRecord[]
+}
+
+enum MedicineStatus {
+  AVAILABLE
+  LOW_STOCK
+  OUT_OF_STOCK
+  EXPIRED
+  RECALLED
+  DISCONTINUED
+}
+
+model Supplier {
+  id              String   @id @default(uuid())
+  name            String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  company         String?
+  productsSupplied String? // Description
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  medicines       Medicine[]
+  purchaseOrders  PurchaseOrder[]
+}
+
+model StockMovement {
+  id              String   @id @default(uuid())
+  medicineId      String
+  type            StockMovementType
+  quantity        Int
+  previousStock   Int
+  newStock        Int
+  reason          String?
+  pharmacistId    String
+  timestamp       DateTime @default(now())
+
+  medicine        Medicine @relation(fields: [medicineId], references: [id])
+  pharmacist      User     @relation("PharmacistStockMovements", fields: [pharmacistId], references: [id])
+}
+
+enum StockMovementType {
+  INWARD          // New stock received
+  OUTWARD         // Dispensed
+  ADJUSTMENT      // Manual adjustment
+  RETURNED        // Returned by patient
+  EXPIRED         // Removed due to expiry
+  DAMAGED         // Removed due to damage
+  RECALLED        // Removed due to recall
+}
+
+model PurchaseOrder {
+  id              String   @id @default(uuid())
+  supplierId      String
+  orderDate       DateTime @default(now())
+  status          POStatus @default(DRAFT)
+  totalAmount     Float
+  pharmacistId    String
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  pharmacist      User     @relation("PharmacistPurchaseOrders", fields: [pharmacistId], references: [id])
+  items           PurchaseOrderItem[]
+}
+
+enum POStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ORDERED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  medicineName    String
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+}
+
+model DispensingRecord {
+  id                String   @id @default(uuid())
+  prescriptionId    String
+  medicineId        String
+  quantityDispensed Int
+  batchNumber       String?
+  expiryDate        DateTime?
+  dispensingNotes   String?
+  counselingNotes   String?
+  pharmacistId      String
+  timestamp         DateTime @default(now())
+
+  prescription      Prescription @relation(fields: [prescriptionId], references: [id])
+  medicine          Medicine     @relation(fields: [medicineId], references: [id])
+  pharmacist        User         @relation("PharmacistDispensing", fields: [pharmacistId], references: [id])
+}
+
+model PharmacyAIInteraction {
+  id                String   @id @default(uuid())
+  prescriptionId    String?
+  query             String
+  response          String
+  confidenceScore   Float
+  rationale         String
+  safetyWarnings    String?
+  alternatives      String?
+  feedbackStatus    PharmacyFeedbackStatus?
+  feedbackRating    Int?
+  feedbackComments  String?
+  feedbackCorrection String?
+  pharmacistId      String
+  createdAt         DateTime @default(now())
+
+  prescription      Prescription? @relation(fields: [prescriptionId], references: [id])
+  pharmacist        User          @relation("PharmacistAIInteractions", fields: [pharmacistId], references: [id])
+}
+
+enum PharmacyFeedbackStatus {
+  ACCEPTED
+  REJECTED
+  PARTIALLY_ACCEPTED
+}
+
+model HospitalResource {
+  id                String   @id @default(uuid())
+  name              String
+  type              String   // "Consultation Room" | "Ward" | "Bed" | "Operating Theatre" | "Laboratory" | "Pharmacy Location"
+  status            String   @default("Available") // "Available" | "Occupied" | "Maintenance" | "Cleaning"
+  occupancy         Int      @default(0)
+  maxCapacity       Int      @default(1)
+  maintenanceNotes  String?
+  lastMaintenance   DateTime?
+  nextMaintenance   DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model HospitalSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HospitalDepartment {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  headId      String?
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BackupRecord {
+  id          String   @id @default(uuid())
+  filename    String
+  filepath    String
+  size        String
+  status      String   @default("Completed") // "Completed" | "Failed"
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Clinical Health Portal",
+  "description": "An Intelligent Healthcare Automation and Decision Support System Powered by Artificial Intelligence and Reinforcement Learning",
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
