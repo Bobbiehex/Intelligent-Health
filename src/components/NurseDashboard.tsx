@@ -30,7 +30,11 @@ interface NurseDashboardProps {
 type NurseView = 'OVERVIEW' | 'PATIENTS' | 'ADMISSION' | 'VITALS' | 'ASSESSMENT' | 'MEDICATION' | 'INTAKE_OUTPUT' | 'NOTES' | 'AI_ASSIST' | 'SHIFT' | 'ANALYTICS' | 'PROFILE';
 
 export default function NurseDashboard({ user, token }: NurseDashboardProps) {
-  const [activeView, setActiveView] = useState<NurseView>('OVERVIEW');
+  const [activeView, setActiveView] = useState<NurseView>(() => (localStorage.getItem('nurseDashboard_activeView') as NurseView) || 'OVERVIEW');
+  
+  useEffect(() => {
+    localStorage.setItem('nurseDashboard_activeView', activeView);
+  }, [activeView]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
