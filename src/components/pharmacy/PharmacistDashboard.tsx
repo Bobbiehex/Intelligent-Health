@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -30,7 +30,11 @@ interface PharmacistDashboardProps {
 }
 
 export const PharmacistDashboard: React.FC<PharmacistDashboardProps> = ({ user, token }) => {
-  const [activeView, setActiveView] = useState<PharmacyView>('OVERVIEW');
+  const [activeView, setActiveView] = useState<PharmacyView>(() => (localStorage.getItem('pharmacistDashboard_activeView') as PharmacyView) || 'OVERVIEW');
+  
+  useEffect(() => {
+    localStorage.setItem('pharmacistDashboard_activeView', activeView);
+  }, [activeView]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navItems = [
