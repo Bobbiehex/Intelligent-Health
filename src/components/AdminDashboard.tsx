@@ -36,7 +36,11 @@ type AdminTab =
   | 'security_backup';
 
 export default function AdminDashboard({ user, token }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>('executive');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => (localStorage.getItem('adminDashboard_activeTab') as AdminTab) || 'executive');
+  
+  useEffect(() => {
+    localStorage.setItem('adminDashboard_activeTab', activeTab);
+  }, [activeTab]);
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   
@@ -204,7 +208,8 @@ export default function AdminDashboard({ user, token }: AdminDashboardProps) {
   const doctorsOnly = staffList.filter(s => s.role === 'DOCTOR');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="h-full overflow-y-auto overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* suite header */}
       <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -420,6 +425,7 @@ export default function AdminDashboard({ user, token }: AdminDashboardProps) {
           />
         )}
       </div>
+    </div>
     </div>
   );
 }
