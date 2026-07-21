@@ -17,7 +17,11 @@ interface ReceptionistDashboardProps {
 }
 
 export default function ReceptionistDashboard({ user, token }: ReceptionistDashboardProps) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('receptionistDashboard_activeTab') || 'dashboard');
+  
+  useEffect(() => {
+    localStorage.setItem('receptionistDashboard_activeTab', activeTab);
+  }, [activeTab]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { data: dashboardData, mutate } = useSWR<any>(
