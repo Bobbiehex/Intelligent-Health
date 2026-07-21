@@ -23,7 +23,11 @@ interface PatientDashboardProps {
 }
 
 export default function PatientDashboard({ user, token }: PatientDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('patientDashboard_activeTab') || 'overview');
+  
+  useEffect(() => {
+    localStorage.setItem('patientDashboard_activeTab', activeTab);
+  }, [activeTab]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hiddenQueueIds, setHiddenQueueIds] = useState<string[]>([]);
@@ -133,7 +137,7 @@ export default function PatientDashboard({ user, token }: PatientDashboardProps)
   ];
 
   return (
-    <div className="flex h-full bg-[#F8FAFC] overflow-hidden">
+    <div className="flex flex-1 w-full h-full min-h-0 bg-[#F8FAFC] overflow-hidden">
       {/* Sidebar */}
       <aside 
         className={`hidden lg:flex ${
@@ -204,7 +208,7 @@ export default function PatientDashboard({ user, token }: PatientDashboardProps)
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-full min-h-0 overflow-hidden relative">
         {/* Header */}
         <header className="h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-3 w-full max-w-md">
@@ -238,12 +242,14 @@ export default function PatientDashboard({ user, token }: PatientDashboardProps)
         </header>
 
         {/* Content Area */}
-        <div className={`flex-1 ${activeTab === 'messages' || activeTab === 'assistant' ? 'overflow-hidden' : 'overflow-y-auto'} bg-[#F8FAFC] flex flex-col`}>
-          <div className={`${activeTab === 'messages' ? 'p-0 w-full' : 'p-4 sm:p-8 lg:p-12 w-full max-w-7xl'} mx-auto flex-1 flex flex-col`}>
+        <div className={`flex-1 ${activeTab === 'messages' || activeTab === 'assistant' ? 'overflow-hidden' : 'overflow-y-auto'} bg-[#F8FAFC] flex flex-col min-h-0`}>
+          <div className={`${activeTab === 'messages' || activeTab === 'assistant' ? 'p-0 w-full' : 'p-4 sm:p-8 lg:p-12 w-full max-w-7xl'} mx-auto flex-1 flex flex-col min-h-0`}>
             
             {/* Real-time Queue Alert when being called, accepted, in consultation, or absent */}
             {activeQueueItem && !hiddenQueueIds.includes(activeQueueItem.id) && (
-              <div className={`mb-8 p-6 rounded-3xl border shadow-lg relative overflow-hidden transition-all duration-300 ${
+              <div className={`shrink-0 mb-4 sm:mb-8 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border shadow-lg relative overflow-hidden transition-all duration-300 ${
+                activeTab === 'messages' || activeTab === 'assistant' ? 'mx-4 sm:mx-8 mt-4 sm:mt-8' : ''
+              } ${
                 activeQueueItem.status === 'Calling'
                   ? 'bg-rose-50 border-rose-100 text-rose-900 animate-pulse'
                   : activeQueueItem.status === 'Accepted'
@@ -385,7 +391,7 @@ export default function PatientDashboard({ user, token }: PatientDashboardProps)
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
-                className={`${activeTab === 'messages' || activeTab === 'assistant' ? 'pb-0' : 'pb-12'} flex-1 flex flex-col w-full h-full`}
+                className={`${activeTab === 'messages' || activeTab === 'assistant' ? 'pb-0' : 'pb-12'} flex-1 flex flex-col w-full h-full min-h-0`}
               >
                 {activeTab === 'overview' && <PatientOverview user={user} token={token} onTabChange={setActiveTab} />}
                 {activeTab === 'appointments' && <AppointmentManagement user={user} token={token} />}
