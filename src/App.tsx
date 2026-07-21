@@ -116,7 +116,7 @@ export default function App() {
       {user && token ? (
         <>
           <Navbar user={user} token={token} onLogout={handleLogout} />
-          <main className="flex-1 overflow-y-auto flex flex-col">
+          <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {user.role === 'PATIENT' && <PatientDashboard user={user} token={token} />}
             {user.role === 'DOCTOR' && <DoctorDashboard user={user} token={token} />}
             {user.role === 'NURSE' && <NurseDashboard user={user} token={token} />}
