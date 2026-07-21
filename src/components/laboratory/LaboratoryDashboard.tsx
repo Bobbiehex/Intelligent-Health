@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -29,7 +29,11 @@ interface LaboratoryDashboardProps {
 }
 
 export const LaboratoryDashboard: React.FC<LaboratoryDashboardProps> = ({ user, token }) => {
-  const [activeView, setActiveView] = useState<LabView>('OVERVIEW');
+  const [activeView, setActiveView] = useState<LabView>(() => (localStorage.getItem('laboratoryDashboard_activeView') as LabView) || 'OVERVIEW');
+  
+  useEffect(() => {
+    localStorage.setItem('laboratoryDashboard_activeView', activeView);
+  }, [activeView]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navItems = [
