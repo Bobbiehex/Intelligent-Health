@@ -26,7 +26,11 @@ interface DoctorDashboardProps {
 type DashboardView = 'overview' | 'patients' | 'consultation' | 'prescriptions' | 'messages' | 'analytics' | 'profile';
 
 export default function DoctorDashboard({ user, token }: DoctorDashboardProps) {
-  const [activeView, setActiveView] = useState<DashboardView>('overview');
+  const [activeView, setActiveView] = useState<DashboardView>(() => (localStorage.getItem('doctorDashboard_activeView') as DashboardView) || 'overview');
+  
+  useEffect(() => {
+    localStorage.setItem('doctorDashboard_activeView', activeView);
+  }, [activeView]);
   const [selectedPatient, setSelectedPatient] = useState<User | null>(null);
   const [activeConsultation, setActiveConsultation] = useState<any | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
